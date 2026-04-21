@@ -1,0 +1,73 @@
+# Load amber/cpptraj
+module load apps/amber/24.tools.24
+
+# Output directory
+in_directory="/user/work/lr19354/OXA163_cefiderocol/"
+out_directory="/user/work/lr19354/OXA163_cefiderocol/needle_hydrolysis_2/"
+
+# Input parameters
+runs=(1 2 3)
+dataset_name=(163_cef_hydrolysis_A)
+
+# Dihedral paramters
+#dihedral_residue=(50)
+#dihedral_atoms=(CAA CAB CAE OAG)
+#dihedral_range=(10 90)
+
+# BD angle parameters
+BD_residue=(50)
+BD_atoms=(O C30 O33)
+BD_range=(105 109)
+
+# Closest water distance parameters 1
+closest_mask=(53@OQ2)
+closest_range=(0 3)
+closest_mask2=(50@C30)
+closest_range2=(0 4)
+
+# Closest 2 waters distance parameters 2
+#closest_mask3=(53@OQ1)
+#closest_range_wat1=(0 3)
+#closest_range_wat2=(3 100000)
+
+mkdir "${out_directory}"
+cd "${out_directory}"
+
+    cpptraj << EOF
+parm ${in_directory}system.parm7
+$(for run in "${runs[@]}"; do
+	echo "trajin ${in_directory}Run${run}/prod${run}.nc"
+done)
+ 	
+# Calculate closest water distance 1 and Burgi-Dunitz angle
+closest 1 :${closest_mask} closestout closeststats_${dataset_name}.dat name closest1 outprefix ${closest_mask}_closest1
+trajout ${closest_mask}_closest1.nc
+run
+clear parm trajin
+parm ${closest_mask}_closest1.system.parm7
+trajin ${closest_mask}_closest1.nc
+distance closestdist1 :${closest_mask} :495@O out stats_${dataset_name}.dat
+hist closestdist1 norm min 0 max 10 bins 100 out hist_${dataset_name}.dat
+distance closestdist2 :${closest_mask2} :495@O out stats_${dataset_name}.dat
+hist closestdist2 norm min 0 max 10 bins 100 out hist_${dataset_name}.dat
+angle BDangle :495@${BD_atoms[0]} :${BD_residue}@${BD_atoms[1]} :${BD_residue}@${BD_atoms[2]} out stats_${dataset_name}.dat
+run
+
+# Filter for frames in range
+clear parm trajin
+parm ${in_directory}system.parm7
+$(for run in "${runs[@]}"; do
+        echo "trajin ${in_directory}Run${run}/prod${run}.nc"
+done)
+filter \
+    BDangle min ${BD_range[0]} max ${BD_range[1]} \
+    closestdist1 min ${closest_range[0]} max ${closest_range[1]} \
+    closestdist2 min ${closest_range2[0]} max ${closest_range2[1]} \
+    out stats_${dataset_name}.dat
+
+# Make trajectory of filtered frames
+trajout filteredframes_${dataset_name}.nc
+run
+quit
+EOF
+
