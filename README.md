@@ -1,4 +1,4 @@
-# MD Trajectory Frame Filter (cpptraj)
+# MD Trajectory Frame Filter
 
 A bash wrapper around [cpptraj](https://amberhub.chpc.utah.edu/cpptraj/) (AmberTools) that identifies MD frames in which a water molecule is positioned for nucleophilic attack on a carbonyl carbon. For each frame it finds the water closest to a reference atom, measures its distances and its **Bürgi–Dunitz (BD) angle** relative to the carbonyl, and then extracts only the frames that satisfy all user-defined geometric criteria.
 
